@@ -163,22 +163,24 @@ def detect(save_txt=False, save_img=False):
                         plot_one_box(xyxy, im0, label=None, color=colors[int(cls)])
 
                 for *xyxy, conf, _, cls in det_exp:
-                    # plot_one_box(xyxy, im0, label=None, color=(0,0,255))
-                    x1, y1, x2, y2 = [int(c) for c in xyxy]
-                    hand = deepcopy(im_hand[y1:y2, x1:x2, :])
-                    hand = cv2.cvtColor(hand, cv2.COLOR_BGR2RGB)
-                    hand = cv2.resize(hand, (32, 32))
-                    hand_pil = Image.fromarray(hand)
-                    data = torch.unsqueeze(trans(hand_pil), 0).to(device)
-                    # print(data.shape)
-                    logits = modelc(data)
-                    # print(logits)
-                    output = F.softmax(logits, dim=1).squeeze()
-                    # print(output)
-                    prob = output.argmax(dim=0)
-                    print("gesture = {}".format(CLASSES[prob.cpu().item()]))
-                    title = "gesture = {}".format(CLASSES[prob.cpu().item()])
-                    plot_one_box(xyxy, im0, label=title, color=(0, 0, 255))
+                    if opt.gesture:
+                        x1, y1, x2, y2 = [int(c) for c in xyxy]
+                        hand = deepcopy(im_hand[y1:y2, x1:x2, :])
+                        hand = cv2.cvtColor(hand, cv2.COLOR_BGR2RGB)
+                        hand = cv2.resize(hand, (64, 64))
+                        hand_pil = Image.fromarray(hand)
+                        data = torch.unsqueeze(trans(hand_pil), 0).to(device)
+                        # print(data.shape)
+                        logits = modelc(data)
+                        # print(logits)
+                        output = F.softmax(logits, dim=1).squeeze()
+                        # print(output)
+                        prob = output.argmax(dim=0)
+                        print("gesture = {}".format(CLASSES[prob.cpu().item()]))
+                        title = "gesture = {}".format(CLASSES[prob.cpu().item()])
+                        plot_one_box(xyxy, im0, label=title, color=(0, 0, 255))
+                    else:
+                        plot_one_box(xyxy, im0, label=None, color=(0, 0, 255))
 
 
             # else:
