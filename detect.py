@@ -46,7 +46,11 @@ def detect(save_txt=False, save_img=False):
         # modelc.load_state_dict(torch.load('weights/resnet101.pt', map_location=device)['model'])  # load weights
         # modelc.to(device).eval()
         checkpoint = torch.load(opt.gesture)
-        modelc = vgg(dataset="handdata")
+        if 'cfg' in checkpoint.keys():
+            cfg = checkpoint['cfg']
+        else:
+            cfg = None
+        modelc = vgg(dataset="handdata", cfg=cfg)
         modelc.load_state_dict(checkpoint['state_dict'])
         modelc.to(device).eval()
         trans = transforms.Compose([
@@ -54,7 +58,9 @@ def detect(save_txt=False, save_img=False):
                        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
                    ])
 
-
+    images_gif = []
+    gif_num = 0
+    gif_saved = 0
     # Fuse Conv2d + BatchNorm2d layers
     # model.fuse()
 
@@ -179,6 +185,19 @@ def detect(save_txt=False, save_img=False):
                         print("gesture = {}".format(CLASSES[prob.cpu().item()]))
                         title = "gesture = {}".format(CLASSES[prob.cpu().item()])
                         plot_one_box(xyxy, im0, label=title, color=(0, 0, 255))
+                        if opt.gif:
+                            if gif_num < opt.gif_frms:
+                                im_gif = cv2.resize(im0, (320, 180))
+                                images_gif.append(Image.fromarray(im_gif[:,:,::-1]))
+                                gif_num += 1
+                            elif gif_saved == 0:
+                                images_gif[0].save('gesture.gif',
+                                save_all=True,
+                                append_images=images_gif[1:],
+                                optimize=False,
+                                duration=40, # display time of each frame in milliseconds
+                                loop=0)
+                                gif_saved = 1
                     else:
                         plot_one_box(xyxy, im0, label=None, color=(0, 0, 255))
 
@@ -233,6 +252,8 @@ if __name__ == '__main__':
     parser.add_argument('--half', action='store_true', help='half precision FP16 inference')
     parser.add_argument('--device', default='', help='device id (i.e. 0 or 0,1) or cpu')
     parser.add_argument('--gesture', default='', help='gesture recognition model')
+    parser.add_argument('--gif', action='store_true', help='save gif')
+    parser.add_argument('--gif_frms', type=int, default=100, help='gif frame num')
     parser.add_argument('--view-img', action='store_true', help='display results')
     opt = parser.parse_args()
     print(opt)
