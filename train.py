@@ -320,10 +320,15 @@ def train():
             else:
                 loss.backward()
 
+
             #对要剪枝层的γ参数稀疏化
             if hasattr(model, 'module'):
+                # print(model.module.module_list)
+                # print("prune_idx={}".format(prune_idx))
                 BNOptimizer.updateBN(sr_flag, model.module.module_list, opt.s, prune_idx)
             else:
+                # print(model.module_list)
+                # print("prune_idx={}".format(prune_idx))
                 BNOptimizer.updateBN(sr_flag, model.module_list, opt.s, prune_idx)
 
             # Accumulate gradient for x batches before optimizing

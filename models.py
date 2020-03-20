@@ -82,6 +82,11 @@ def create_modules(module_defs, img_size, arc):
 
         elif mdef['type'] == 'route':  # nn.Sequential() placeholder for 'route' layer
             layers = [int(x) for x in mdef['layers'].split(',')]
+            if len(layers) > 1:
+                print("concate layer={}".format(i))
+                print("concate", end=' ')
+                print([l if l > 0 else l + i for l in layers], end=' ')
+                print("layer")
             filters = sum([output_filters[i + 1 if i > 0 else i] for i in layers])
             routs.extend([l if l > 0 else l + i for l in layers])
             # if mdef[i+1]['type'] == 'reorg3d':
@@ -91,6 +96,9 @@ def create_modules(module_defs, img_size, arc):
             filters = output_filters[int(mdef['from'])]
             layer = int(mdef['from'])
             routs.extend([i + layer if layer < 0 else layer])
+            # print("shortcut layer {} add prev layer:".format(i), end=' ')
+            # print([i + layer if layer < 0 else layer][0], end=' ')
+            # print("")
 
         elif mdef['type'] == 'reorg3d':  # yolov3-spp-pan-scale
             # torch.Size([16, 128, 104, 104])
@@ -98,6 +106,7 @@ def create_modules(module_defs, img_size, arc):
             pass
 
         elif mdef['type'] == 'yolo':
+            print("Detection layer = {}".format(i))
             yolo_index += 1
             mask = [int(x) for x in mdef['mask'].split(',')]  # anchor mask
             modules = YOLOLayer(anchors=mdef['anchors'][mask],  # anchor list
@@ -242,10 +251,12 @@ class Darknet(nn.Module):
             self.module_defs = cfg
 
         self.hyperparams=copy.deepcopy(self.module_defs[0])
-        
         self.module_list, self.routs = create_modules(self.module_defs, img_size, arc)
         self.yolo_layers = get_yolo_layers(self)
-        
+        print("Dectection layer = ", end='')
+        print(self.yolo_layers)
+        print("Route layer = ", end='')
+        print(self.routs)
         # Darknet Header https://github.com/AlexeyAB/darknet/issues/2914#issuecomment-496675346
         self.version = np.array([0, 2, 5], dtype=np.int32)  # (int32) version info: major, minor, revision
         self.seen = np.array([0], dtype=np.int64)  # (int64) number of images seen during training
@@ -275,8 +286,8 @@ class Darknet(nn.Module):
             elif mtype == 'yolo':
                 x = module(x, img_size)
                 output.append(x)
+            # store this layer, for reference of next shorcut op
             layer_outputs.append(x if i in self.routs else [])
-
         if self.training:
             return output
         elif ONNX_EXPORT:
